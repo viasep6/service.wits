@@ -19,11 +19,9 @@ jobs:
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v2
-
-      - name: Setup Node ${{ env.NODE_VERSION }} Environment
-        uses: actions/setup-node@v1
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          token: ${{ secrets.CI_TOKEN }}
+          submodules: true
 
       - name: 'Resolve Project Dependencies Using Npm'
         shell: bash
