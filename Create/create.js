@@ -3,21 +3,21 @@ const { db } = require('../service.shared/Repository/Firebase/admin')
 
 exports.postWit = (request, response) => {
     // TODO: validate input
-    console.log(request.body.title);
 
-    if (request.body.body.trim() === '') {
+    if (request.body.text.trim() === '') {
 		return response.status(400).JSON.stringify({ body: 'Must not be empty' });
     }
     
-    if(request.body.title.trim() === '') {
-        return response.status(400).JSON.stringify({ title: 'Must not be empty' });
-    }
-    
     const newItem = {
-        title: request.body.title,
-        body: request.body.body,
-        createdAt: new Date().toISOString()
+        created: new Date().toISOString(),
+        created_by: request.user.idtoken,
+        text: request.body.text, // max 300
+        movieTags: request.body.movieTags, // movieid
+        userTags: request.body.userTags, // userid
+        roars: [] // userid
+
     }
+
     return db
         .collection('wits')
         .add(newItem)
@@ -25,7 +25,7 @@ exports.postWit = (request, response) => {
             const responseItem = newItem;
             responseItem.id = doc.id;
             response.res = {
-                // status: 200, /* Defaults to 200 */
+                // return: 200, /* Default is 200 */
                 body: JSON.stringify(responseItem)
             };
         })

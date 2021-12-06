@@ -28,3 +28,30 @@ exports.getAllWits = (request, response) => {
     });
 
 }
+
+
+exports.getByUserId = (request, response) => {
+    const userId = request.query.userId;
+
+    return db
+    .collection('wits')
+    .where('created_by', '==', userId)
+    .orderBy('created', 'desc')
+    .get()
+    .then( (querySnapshot) => {
+
+        return response.res.json(JSON.stringify(querySnapshot.docs.map(doc => {
+            let wit = doc.data()
+            console.log(wit);
+            wit.movieTags.forEach(e => {
+                wit.movieTags.push(e.get())
+            })
+            return wit
+        })))
+    })
+    .catch((err) => {
+        console.error(err);
+        return response.status(500).JSON.stringify({ error: err.code});
+    });
+
+}
