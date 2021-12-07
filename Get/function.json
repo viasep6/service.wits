@@ -8,7 +8,7 @@
       "methods": [
         "get"
       ],
-      "route": "Get_{type}"
+      "route": "get_{type}"
     },
     {
       "type": "http",
