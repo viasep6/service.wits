@@ -93,7 +93,6 @@ exports.postRoar = async (request, response) => {
     const roarUser = db.doc('users/' + request.user.idtoken)
     const roars = wit.data().roars.map(x => x.id);
 
-
     // check if user has roared the wit
     if (roars.includes(request.user.idtoken)) {
         db.doc('wits/' + witId).update( {
