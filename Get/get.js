@@ -62,9 +62,11 @@ exports.getAllWits = (request, response) => {
 exports.getByUserId = (request, response) => {
     const limit = 10
     const userId = request.query.userId;
-    const startAfter = request.query.startAfter;
-
-    console.log("-----", userId, startAfter);
+    let startAfter = request.query.startAfter;
+    
+    if (startAfter === undefined || startAfter === '') {
+        startAfter = new Date().toISOString()
+    }
 
     return db
     .collection('wits')
