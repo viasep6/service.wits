@@ -1,15 +1,14 @@
-const { auth } = require('firebase-admin');
+const auth = require('../service.shared/Repository/Firebase/auth')
 const wits = require('./get')
 
 
 module.exports = async function (context, req) {
-
     console.log("TYPE: ", req.params.type);
     const param = req.params.type
-    if (param === 'all') {
-        return await wits.getAllWits(req, context)
-    } else if (param === 'by_userid') {
-        return await wits.getByUserId(req, context)
+    if (param === 'by_userid') {
+        await wits.getByUserId(req, context)
+    } else if (param === 'by_feed') {
+        await auth(req, context, wits.getByFeed)
     }
     
 }

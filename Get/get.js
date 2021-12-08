@@ -1,32 +1,60 @@
 const { db } = require('../service.shared/Repository/Firebase/admin')
 
-exports.getAllWits = (request, response) => {
+exports.getByUserId = (request, response) => {
+    const limit = 10
+    const userId = request.query.userId;
+    let startAfter = request.query.startAfter;
+    
+    if (startAfter === undefined || startAfter === '') {
+        startAfter = new Date().toISOString()
+    }
     
     return db
     .collection('wits')
+    .where('created_by', '==', db.doc('users/' + userId))
     .orderBy('created', 'desc')
+    .limit(limit) 
+    .startAfter(startAfter)
     .get()
     .then(async (data) => {
         let wits = [];
-
+        console.log("size:", data.docs.length);
         for (let witData of data.docs) {
             let wit = witData.data()
+            wit.id = witData.id
             // created by
             let created_by_user = await wit.created_by.get()
-            let {profileImage, displayName, idtoken } = (await created_by_user.data())
+            let {profileImage, displayName, idtoken} = (await created_by_user.data())
             wit.created_by = {profileImage, displayName, idtoken}
             
+            // user
+            if (wit.userTags !== undefined) {
+                let users = []
+                for (let userDoc of wit.userTags) {
+                    userDoc = await userDoc.get()
+                    let idtoken = userDoc.id;
+                    let {displayName, profileImage} = (await userDoc.data())
+                    let user = {idtoken: idtoken, displayName: displayName, profileImage: profileImage}
+
+                    users.push(user);
+                }
+                wit.userTags = users;
+            }
+
             // movie
             if (wit.movieTags !== undefined) {
                 let movies = []
+                
                 for (let movieDoc of wit.movieTags) {
                     movieDoc = await movieDoc.get()
                     let movieId = movieDoc.id
-                    let {movieName} = (await movieDoc.data())
-                    let movie = {movieId: movieId, movieName: movieName}
+                    let {title} = (await movieDoc.data())
+                    let movie = {movieId: movieId, title: title}
+                
                     movies.push(movie)
                 }
                 wit.movieTags = movies
+                console.log(wit.movieTags);
             }
 
 
@@ -59,71 +87,106 @@ exports.getAllWits = (request, response) => {
 }
 
 
-exports.getByUserId = (request, response) => {
+/*
+    Returns all wits by user and all wits from subscribed movies
+    limited 10, startAfter <iso string date>
+*/
+exports.getByFeed = async (request, response) => {
+
     const limit = 10
-    const userId = request.query.userId;
+    const userId = request.user.idtoken
     let startAfter = request.query.startAfter;
-    
+
     if (startAfter === undefined || startAfter === '') {
         startAfter = new Date().toISOString()
     }
+    
+    const docs = []
+    const user = db.doc('users/' + userId)
+    
+    const witsByUser = await db.collection('wits').where('created_by', '==', user)
+        .orderBy('created', 'desc').limit(limit)
+        .startAfter(startAfter)
+        .get()
+    docs.push(...witsByUser.docs)
 
-    return db
-    .collection('wits')
-    .where('created_by', '==', db.doc('users/' + userId))
-    .orderBy('created', 'desc')
-    .limit(limit) 
-    .startAfter(startAfter)
+    const movies = await db.collection('movies')
+    .where('following', 'array-contains', user)
     .get()
-    .then(async (data) => {
-        let wits = [];
-        console.log("size:", data.docs.length);
-        for (let witData of data.docs) {
-            let wit = witData.data()
-            wit.id = witData.id
-            // created by
-            let created_by_user = await wit.created_by.get()
-            let {profileImage, displayName, idtoken } = (await created_by_user.data())
-            wit.created_by = {profileImage, displayName, idtoken}
-            
-            // movie
-            if (wit.movieTags !== undefined) {
-                let movies = []
-                for (let movieDoc of wit.movieTags) {
-                    movieDoc = await movieDoc.get()
-                    let movieId = movieDoc.id
-                    let {movieName} = (await movieDoc.data())
-                    let movie = {movieId: movieId, movieName: movieName}
-                    movies.push(movie)
-                }
-                wit.movieTags = movies
+    for (let doc of movies.docs) {
+        const witsByMovie = await db.collection('wits')
+        .where('movieTags', 'array-contains', db.doc('movies/' + doc.id))
+        .orderBy('created', 'desc')
+        .limit(limit)
+        .startAfter(startAfter)
+        .get()
+
+        docs.push(...witsByMovie.docs)
+    }
+    // todo: filter wits here to avoid too many calls
+    const wits = []
+    for (let witData of docs) {
+        let wit = witData.data()
+        wit.id = witData.id
+        // created by
+        let created_by_user = await wit.created_by.get()
+        let {profileImage, displayName, idtoken } = (await created_by_user.data())
+        wit.created_by = {profileImage, displayName, idtoken}
+        
+        // movie
+        if (wit.movieTags !== undefined) {
+            let movies = []
+            for (let movieDoc of wit.movieTags) {
+                movieDoc = await movieDoc.get()
+                let movieId = movieDoc.id
+                let {title} = (await movieDoc.data())
+                let movie = {movieId: movieId, title: title}
+                movies.push(movie)
             }
-
-
-            // roar
-            if (wit.roars !== undefined) {
-                let roars = []
-                for (let roarDoc of wit.roars) {
-                    roarDoc = await roarDoc.get()
-                    let {displayName, idtoken } = (await roarDoc.data())
-                    let roar = {displayName: displayName, idtoken: idtoken}
-                    roars.push(roar)
-                }
-                wit.roars = roars;
-            }
-
-            wits.push(wit)
+            wit.movieTags = movies
         }
-        
-        response.res = {
-            // status: 200, /* Defaults to 200 */
-            body: JSON.stringify(wits)
-        };
-        
-    })
-    .catch((err) => {
-        console.error(err);
-        response.status(500).JSON.stringify({ error: err.code});
-    });
 
+
+        // roar
+        if (wit.roars !== undefined) {
+            let roars = []
+            for (let roarDoc of wit.roars) {
+                roarDoc = await roarDoc.get()
+                let {displayName, idtoken } = (await roarDoc.data())
+                let roar = {displayName: displayName, idtoken: idtoken}
+                roars.push(roar)
+            }
+            wit.roars = roars;
+        }
+
+        wits.push(wit)
+    }
+
+    let witsToReturn = getUnique(wits, 'id').sort(function(a, b) {
+        return new Date(b.created) - new Date(a.created);
+    }).slice(0, limit);
+
+    response.res = {
+        // status: 200, /* Defaults to 200 */
+        body: JSON.stringify(witsToReturn)
+    };
+
+
+
+
+}
+
+
+function getUnique(arr, comp) {
+
+    // store the comparison  values in array
+    const unique =  arr.map(e => e[comp])
+
+    // store the indexes of the unique objects
+    .map((e, i, final) => final.indexOf(e) === i && i)
+
+    // eliminate the false indexes & return unique objects
+    .filter((e) => arr[e]).map(e => arr[e]);
+
+    return unique;
 }
