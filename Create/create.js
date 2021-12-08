@@ -18,17 +18,23 @@ exports.postWit = (request, response) => {
     if (request.body.userTags && request.body.userTags.length > 0) {
         let userTagsRef = [];
         request.body.userTags.forEach(element => {
-            userTagsRef.push(db.doc('users/' + element))
+            // { <displayName>}
+            userTagsRef.push(db.collection('users').where('displayName', '===', element).limit(1).get().docs[0])
         });
+        newItem.userTags = userTagsRef
     }
 
     if (request.body.movieTags && request.body.movieTags.length > 0) {
         let movieTagsRef = [];
-        request.body.movieTags.forEach(element => {
-            movieTagsRef.push(db.doc('movies/' + element))
-        })
+        for (let tag of request.body.movieTags) {        
+            // { movieId: <id>, title: <title>}
+            db.doc('movies/' + tag.movieId).set( {
+                title: tag.title
+            }, {merge: true})
+            movieTagsRef.push(db.doc('movies/' + tag.movieId))
+        }
+        newItem.movieTags = movieTagsRef
     }
- 
     return db
         .collection('wits')
         .add(newItem)
@@ -41,21 +47,38 @@ exports.postWit = (request, response) => {
             wit.id = data.id
             // created by
             let created_by_user = await wit.created_by.get()
-            let {profileImage, displayName, idtoken } = (await created_by_user.data())
+            let {profileImage, displayName, idtoken} = (await created_by_user.data())
             wit.created_by = {profileImage, displayName, idtoken}
             
+            // user
+            if (wit.userTags !== undefined) {
+                let users = []
+                for (let userDoc of wit.userTags) {
+                    userDoc = await userDoc.get()
+                    let idtoken = userDoc.id;
+                    let {displayName, profileImage} = (await userDoc.data())
+                    let user = {idtoken: idtoken, displayName: displayName, profileImage: profileImage}
+
+                    users.push(user);
+                }
+                wit.userTags = users;
+            }
+
             // movie
             if (wit.movieTags !== undefined) {
                 let movies = []
+                
                 for (let movieDoc of wit.movieTags) {
                     movieDoc = await movieDoc.get()
                     let movieId = movieDoc.id
-                    let {movieName} = (await movieDoc.data())
-                    let movie = {movieId: movieId, movieName: movieName}
+                    let {title} = (await movieDoc.data())
+                    let movie = {movieId: movieId, title: title}
+                
                     movies.push(movie)
                 }
                 wit.movieTags = movies
             }
+
 
 
             // roar
@@ -72,6 +95,10 @@ exports.postWit = (request, response) => {
 
             wits.push(wit)
             
+            // update wit counter
+            await db.doc('users/' + idtoken).update({
+                witCount: admin.firestore.FieldValue.increment(1)
+            })
             
             response.res = {
                 // status: 200, /* Defaults to 200 */
@@ -85,7 +112,7 @@ exports.postWit = (request, response) => {
 		});
 }
 
-exports.postRoar = async (request, response) => {
+exports.roarWit = async (request, response) => {
 
     const witId = request.query.roarWit
 
