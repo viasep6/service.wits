@@ -29,8 +29,9 @@ exports.postWit = (request, response) => {
         for (let tag of request.body.movieTags) {        
             // { movieId: <id>, title: <title>}
             db.doc('movies/' + tag.movieId).set( {
-                title: tag.title
-            }, {merge: true})
+                title: tag.title,
+                witCount: admin.firestore.FieldValue.increment(1)
+            }, {merge:true})
             movieTagsRef.push(db.doc('movies/' + tag.movieId))
         }
         newItem.movieTags = movieTagsRef
@@ -100,6 +101,11 @@ exports.postWit = (request, response) => {
                 witCount: admin.firestore.FieldValue.increment(1)
             })
             
+            // // update movie wit counter
+            // await db.doc('movies/' + movieId).update({
+            //     witCount: admin.firestore.FieldValue.increment(1)
+            // })
+
             response.res = {
                 // status: 200, /* Defaults to 200 */
                 body: JSON.stringify(wits)
