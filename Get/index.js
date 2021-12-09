@@ -9,6 +9,8 @@ module.exports = async function (context, req) {
         await wits.getByUserId(req, context)
     } else if (param === 'by_feed') {
         await auth(req, context, wits.getByFeed)
+    } else if (param === 'by_movie') {
+        await wits.getByMovie(req, context)
     }
     
 }
