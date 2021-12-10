@@ -109,7 +109,7 @@ exports.getByFeed = async (request, response) => {
     docs.push(...witsByUser.docs)
 
     const movies = await db.collection('movies')
-    .where('following', 'array-contains', user)
+    .where('followers', 'array-contains', user)
     .get()
     for (let doc of movies.docs) {
         const witsByMovie = await db.collection('wits')
