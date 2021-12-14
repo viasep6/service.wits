@@ -1,5 +1,42 @@
 const { db, admin } = require('../service.shared/Repository/Firebase/admin')
 
+async function getFromUserTags(wit) {
+    let users = [];
+    for (let userDoc of wit.userTags) {
+        userDoc = await userDoc.get();
+        let idtoken = userDoc.id;
+        let {displayName, profileImage} = (await userDoc.data());
+        let user = {idtoken: idtoken, displayName: displayName, profileImage: profileImage};
+
+        users.push(user);
+    }
+    return users;
+}
+
+async function getFromMovieTags(wit) {
+    let movies = [];
+
+    for (let movieDoc of wit.movieTags) {
+        movieDoc = await movieDoc.get();
+        let movieId = movieDoc.id;
+        let {title} = (await movieDoc.data());
+        let movie = {movieId: movieId, title: title};
+
+        movies.push(movie);
+    }
+    return movies;
+}
+
+async function getRoarDetails(wit) {
+    let roars = [];
+    for (let roarDoc of wit.roars) {
+        roarDoc = await roarDoc.get();
+        let {displayName, idtoken} = (await roarDoc.data());
+        let roar = {displayName: displayName, idtoken: idtoken};
+        roars.push(roar);
+    }
+    return roars;
+}
 
 exports.postWit = (request, response) => {
 
@@ -41,7 +78,7 @@ exports.postWit = (request, response) => {
         .add(newItem)
         .then(async (data) => {
             let wits = [];
-            
+
             let wit = await data.get()
             wit = wit.data()
 
@@ -50,48 +87,20 @@ exports.postWit = (request, response) => {
             let created_by_user = await wit.created_by.get()
             let {profileImage, displayName, idtoken} = (await created_by_user.data())
             wit.created_by = {profileImage, displayName, idtoken}
-            
+
             // user
             if (wit.userTags !== undefined) {
-                let users = []
-                for (let userDoc of wit.userTags) {
-                    userDoc = await userDoc.get()
-                    let idtoken = userDoc.id;
-                    let {displayName, profileImage} = (await userDoc.data())
-                    let user = {idtoken: idtoken, displayName: displayName, profileImage: profileImage}
-
-                    users.push(user);
-                }
-                wit.userTags = users;
+                wit.userTags = await getFromUserTags(wit);
             }
 
             // movie
             if (wit.movieTags !== undefined) {
-                let movies = []
-                
-                for (let movieDoc of wit.movieTags) {
-                    movieDoc = await movieDoc.get()
-                    let movieId = movieDoc.id
-                    let {title} = (await movieDoc.data())
-                    let movie = {movieId: movieId, title: title}
-                
-                    movies.push(movie)
-                }
-                wit.movieTags = movies
+                wit.movieTags = await getFromMovieTags(wit)
             }
-
-
 
             // roar
             if (wit.roars !== undefined) {
-                let roars = []
-                for (let roarDoc of wit.roars) {
-                    roarDoc = await roarDoc.get()
-                    let {displayName, idtoken } = (await roarDoc.data())
-                    let roar = {displayName: displayName, idtoken: idtoken}
-                    roars.push(roar)
-                }
-                wit.roars = roars;
+                wit.roars = await getRoarDetails(wit);
             }
 
             wits.push(wit)
@@ -100,11 +109,6 @@ exports.postWit = (request, response) => {
             await db.doc('users/' + idtoken).update({
                 witCount: admin.firestore.FieldValue.increment(1)
             })
-            
-            // // update movie wit counter
-            // await db.doc('movies/' + movieId).update({
-            //     witCount: admin.firestore.FieldValue.increment(1)
-            // })
 
             response.res = {
                 // status: 200, /* Defaults to 200 */
@@ -128,6 +132,7 @@ exports.roarWit = async (request, response) => {
 
     // check if user has roared the wit
     if (roars.includes(request.user.idtoken)) {
+
         db.doc('wits/' + witId).update( {
             roars: admin.firestore.FieldValue.arrayRemove(roarUser)
         })

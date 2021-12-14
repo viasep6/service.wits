@@ -1,5 +1,41 @@
 const { db } = require('../service.shared/Repository/Firebase/admin')
 
+async function getFromUserTags(wit) {
+    let users = [];
+    for (let userDoc of wit.userTags) {
+        userDoc = await userDoc.get();
+        let idtoken = userDoc.id;
+        let {displayName, profileImage} = (await userDoc.data());
+        let user = {idtoken: idtoken, displayName: displayName, profileImage: profileImage};
+
+        users.push(user);
+    }
+    return users;
+}
+
+async function getFromMovieTags(wit) {
+    let movies = [];
+    for (let movieDoc of wit.movieTags) {
+        movieDoc = await movieDoc.get();
+        let movieId = movieDoc.id;
+        let {title} = (await movieDoc.data());
+        let movie = {movieId: movieId, title: title};
+        movies.push(movie);
+    }
+    return movies;
+}
+
+async function getRoarDetails(wit) {
+    let roars = [];
+    for (let roarDoc of wit.roars) {
+        roarDoc = await roarDoc.get();
+        let {displayName, idtoken} = (await roarDoc.data());
+        let roar = {displayName: displayName, idtoken: idtoken};
+        roars.push(roar);
+    }
+    return roars;
+}
+
 exports.getByUserId = (request, response) => {
     const limit = 10
     const userId = request.query.userId;
@@ -28,43 +64,19 @@ exports.getByUserId = (request, response) => {
             
             // user
             if (wit.userTags !== undefined) {
-                let users = []
-                for (let userDoc of wit.userTags) {
-                    userDoc = await userDoc.get()
-                    let idtoken = userDoc.id;
-                    let {displayName, profileImage} = (await userDoc.data())
-                    let user = {idtoken: idtoken, displayName: displayName, profileImage: profileImage}
-
-                    users.push(user);
-                }
+                let {users} = await getFromUserTags(wit);
                 wit.userTags = users;
             }
 
             // movie
             if (wit.movieTags !== undefined) {
-                let movies = []
-                
-                for (let movieDoc of wit.movieTags) {
-                    movieDoc = await movieDoc.get()
-                    let movieId = movieDoc.id
-                    let {title} = (await movieDoc.data())
-                    let movie = {movieId: movieId, title: title}
-                
-                    movies.push(movie)
-                }
+                let {movies} = await getFromMovieTags(wit);
                 wit.movieTags = movies
             }
 
-
             // roar
             if (wit.roars !== undefined) {
-                let roars = []
-                for (let roarDoc of wit.roars) {
-                    roarDoc = await roarDoc.get()
-                    let {displayName, idtoken } = (await roarDoc.data())
-                    let roar = {displayName: displayName, idtoken: idtoken}
-                    roars.push(roar)
-                }
+                let {roars} = await getRoarDetails(wit);
                 wit.roars = roars;
             }
 
@@ -83,6 +95,7 @@ exports.getByUserId = (request, response) => {
     });
 
 }
+
 
 
 /*
@@ -111,6 +124,7 @@ exports.getByFeed = async (request, response) => {
     const movies = await db.collection('movies')
     .where('followers', 'array-contains', user)
     .get()
+
     for (let doc of movies.docs) {
         const witsByMovie = await db.collection('wits')
         .where('movieTags', 'array-contains', db.doc('movies/' + doc.id))
@@ -133,27 +147,13 @@ exports.getByFeed = async (request, response) => {
         
         // movie
         if (wit.movieTags !== undefined) {
-            let movies = []
-            for (let movieDoc of wit.movieTags) {
-                movieDoc = await movieDoc.get()
-                let movieId = movieDoc.id
-                let {title} = (await movieDoc.data())
-                let movie = {movieId: movieId, title: title}
-                movies.push(movie)
-            }
+            let {movies, movieDoc} = await getFromMovieTags(wit);
             wit.movieTags = movies
         }
 
-
         // roar
         if (wit.roars !== undefined) {
-            let roars = []
-            for (let roarDoc of wit.roars) {
-                roarDoc = await roarDoc.get()
-                let {displayName, idtoken } = (await roarDoc.data())
-                let roar = {displayName: displayName, idtoken: idtoken}
-                roars.push(roar)
-            }
+            let {roars, roarDoc} = await getRoarDetails(wit);
             wit.roars = roars;
         }
 
