@@ -64,20 +64,17 @@ exports.getByUserId = (request, response) => {
             
             // user
             if (wit.userTags !== undefined) {
-                let {users} = await getFromUserTags(wit);
-                wit.userTags = users;
+                wit.userTags = await getFromUserTags(wit);
             }
 
             // movie
             if (wit.movieTags !== undefined) {
-                let {movies} = await getFromMovieTags(wit);
-                wit.movieTags = movies
+                wit.movieTags = await getFromMovieTags(wit)
             }
 
             // roar
             if (wit.roars !== undefined) {
-                let {roars} = await getRoarDetails(wit);
-                wit.roars = roars;
+                wit.roars =  await getRoarDetails(wit);
             }
 
             wits.push(wit)
