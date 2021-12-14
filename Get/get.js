@@ -163,7 +163,7 @@ exports.getByFeed = async (request, response) => {
         // status: 200, /* Defaults to 200 */
         body: JSON.stringify(witsToReturn)
     };
-    
+
 }
 
 
@@ -200,7 +200,7 @@ exports.getByMovie = async (request, response) => {
 
         // roar
         if (wit.roars !== undefined) {
-            wit.roars = getRoarDetails(wit)
+            wit.roars = await getRoarDetails(wit);
         }
 
         wits.push(wit)
